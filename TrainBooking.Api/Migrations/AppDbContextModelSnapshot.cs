@@ -104,7 +104,7 @@ namespace TrainBooking.Api.Migrations
                     b.HasOne("TrainBooking.Api.Models.Train", "Train")
                         .WithMany("Tickets")
                         .HasForeignKey("TrainId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Train");
