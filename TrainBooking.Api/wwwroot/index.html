@@ -78,6 +78,11 @@
   .message.ok { background: #ecfdf5; color: #065f46; display: block; }
   .empty { color: var(--muted); font-size: 0.85rem; padding: 10px 0; }
   .ticket-train-label { color: var(--muted); font-size: 0.85rem; margin-bottom: 10px; }
+  .lookup-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .lookup-row input { max-width: 110px; }
+  .lookup-result { font-size: 0.85rem; min-height: 20px; margin-bottom: 10px; color: var(--muted); }
+  .lookup-result.ok { color: #065f46; }
+  .lookup-result.error { color: var(--warn-text); }
 </style>
 </head>
 <body>
@@ -116,6 +121,11 @@
 
     <div class="card full-width">
       <h2>Trains</h2>
+      <div class="lookup-row">
+        <input id="train-lookup-id" type="number" min="1" placeholder="Train ID" />
+        <button type="button" class="secondary" id="train-lookup-btn">Look up by ID (GET /api/trains/{id})</button>
+      </div>
+      <div id="train-lookup-result" class="lookup-result"></div>
       <table>
         <thead>
           <tr><th>ID</th><th>Number</th><th>Name</th><th>Source</th><th>Destination</th><th>Capacity</th><th>Actions</th></tr>
@@ -144,6 +154,11 @@
 
     <div class="card">
       <h2>Tickets</h2>
+      <div class="lookup-row">
+        <input id="ticket-lookup-id" type="number" min="1" placeholder="Ticket ID" />
+        <button type="button" class="secondary" id="ticket-lookup-btn">Look up by ID (GET /api/tickets/{id})</button>
+      </div>
+      <div id="ticket-lookup-result" class="lookup-result"></div>
       <table>
         <thead>
           <tr><th>ID</th><th>Passenger</th><th>Seat</th><th>Status</th><th>Action</th></tr>
@@ -298,6 +313,20 @@
     }
   }
 
+  document.getElementById('train-lookup-btn').addEventListener('click', async () => {
+    const id = document.getElementById('train-lookup-id').value;
+    const resultEl = document.getElementById('train-lookup-result');
+    if (!id) { resultEl.textContent = ''; resultEl.className = 'lookup-result'; return; }
+    try {
+      const train = await api(`/api/trains/${id}`);
+      resultEl.textContent = `#${train.id} ${train.trainNumber} "${train.trainName}" — ${train.source} → ${train.destination}, capacity ${train.capacity}`;
+      resultEl.className = 'lookup-result ok';
+    } catch (err) {
+      resultEl.textContent = err.message;
+      resultEl.className = 'lookup-result error';
+    }
+  });
+
   // ---- Tickets ----
   const ticketForm = document.getElementById('ticket-form');
   const ticketMsg = document.getElementById('ticket-message');
@@ -371,6 +400,22 @@
       show(ticketMsg, err.message, false);
     }
   }
+
+  document.getElementById('ticket-lookup-btn').addEventListener('click', async () => {
+    const id = document.getElementById('ticket-lookup-id').value;
+    const resultEl = document.getElementById('ticket-lookup-result');
+    if (!id) { resultEl.textContent = ''; resultEl.className = 'lookup-result'; return; }
+    try {
+      const t = await api(`/api/tickets/${id}`);
+      const isBooked = t.status === 0;
+      const cancelled = t.cancelledAtUtc ? `, cancelled ${new Date(t.cancelledAtUtc).toLocaleString()}` : '';
+      resultEl.textContent = `#${t.id} seat ${t.seatNumber} on train ${t.trainNumber} — ${t.passengerName} — ${isBooked ? 'Booked' : 'Cancelled'} (booked ${new Date(t.bookedAtUtc).toLocaleString()}${cancelled})`;
+      resultEl.className = 'lookup-result ok';
+    } catch (err) {
+      resultEl.textContent = err.message;
+      resultEl.className = 'lookup-result error';
+    }
+  });
 
   ticketForm.addEventListener('submit', async (e) => {
     e.preventDefault();
