@@ -18,6 +18,9 @@ builder.Services.AddScoped<ITicketService, TicketService>();
 
 var app = builder.Build();
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseMiddleware<ApiExceptionMiddleware>();
 
 // Configure Swagger
