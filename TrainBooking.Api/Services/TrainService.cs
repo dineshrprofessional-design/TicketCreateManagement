@@ -37,7 +37,7 @@ public class TrainService : ITrainService
         {
             await _db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        catch (DbUpdateException ex) when (DbExceptionHelpers.IsUniqueViolation(ex))
         {
             throw new ConflictException($"A train with number '{request.TrainNumber}' already exists");
         }
@@ -88,7 +88,7 @@ public class TrainService : ITrainService
         {
             await _db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        catch (DbUpdateException ex) when (DbExceptionHelpers.IsUniqueViolation(ex))
         {
             throw new ConflictException($"A train with number '{request.TrainNumber}' already exists");
         }
@@ -118,7 +118,4 @@ public class TrainService : ITrainService
         Destination = train.Destination,
         Capacity = train.Capacity
     };
-
-    private static bool IsUniqueViolation(DbUpdateException ex) =>
-        ex.InnerException is Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation };
 }

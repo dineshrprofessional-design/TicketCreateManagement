@@ -18,6 +18,8 @@ builder.Services.AddScoped<ITicketService, TicketService>();
 
 var app = builder.Build();
 
+app.UseHttpsRedirection();
+
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
@@ -30,7 +32,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 

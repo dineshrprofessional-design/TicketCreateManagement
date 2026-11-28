@@ -62,7 +62,7 @@ public class TicketService : ITicketService
         {
             await _db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        catch (DbUpdateException ex) when (DbExceptionHelpers.IsUniqueViolation(ex))
         {
             throw new ConflictException($"Seat {seatNumber} on train {train.Id} was just booked by another request");
         }
@@ -118,7 +118,4 @@ public class TicketService : ITicketService
         BookedAtUtc = ticket.BookedAtUtc,
         CancelledAtUtc = ticket.CancelledAtUtc
     };
-
-    private static bool IsUniqueViolation(DbUpdateException ex) =>
-        ex.InnerException is Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation };
 }
