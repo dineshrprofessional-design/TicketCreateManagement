@@ -1,6 +1,103 @@
 @TrainBooking.Api_HostAddress = http://localhost:5255
 
-GET {{TrainBooking.Api_HostAddress}}/weatherforecast/
+# Note: ids below assume a fresh database (Postgres identity columns don't
+# reset after a delete). If you've already created/deleted trains or tickets,
+# adjust the ids in the URLs/bodies to match what GET /api/trains actually returns.
+
+### 1. Create a train -> expect 201
+POST {{TrainBooking.Api_HostAddress}}/api/trains
+Content-Type: application/json
+
+{
+  "trainNumber": "12951",
+  "trainName": "Mumbai Rajdhani",
+  "source": "Mumbai Central",
+  "destination": "New Delhi",
+  "capacity": 72
+}
+
+### 2. List all trains -> expect 200
+GET {{TrainBooking.Api_HostAddress}}/api/trains
 Accept: application/json
 
+### 3. Get train by id -> expect 200
+GET {{TrainBooking.Api_HostAddress}}/api/trains/1
+Accept: application/json
+
+### 4. Book seat 5 on train 1 -> expect 201
+POST {{TrainBooking.Api_HostAddress}}/api/tickets
+Content-Type: application/json
+
+{
+  "trainId": 1,
+  "passengerName": "Asha Rao",
+  "seatNumber": 5
+}
+
+### 5. Attempt to double-book seat 5 -> expect 409 Conflict
+POST {{TrainBooking.Api_HostAddress}}/api/tickets
+Content-Type: application/json
+
+{
+  "trainId": 1,
+  "passengerName": "Vikram Shah",
+  "seatNumber": 5
+}
+
+### 6. Book without a seat number -> expect 201, auto-assigned to the lowest free seat
+POST {{TrainBooking.Api_HostAddress}}/api/tickets
+Content-Type: application/json
+
+{
+  "trainId": 1,
+  "passengerName": "Auto Assigned"
+}
+
+### 7. Cancel ticket 1 (the seat-5 booking from step 4) -> expect 200, status Cancelled
+POST {{TrainBooking.Api_HostAddress}}/api/tickets/1/cancel
+
+### 8. Re-book seat 5 on train 1 -> expect 201 (proves cancellation freed the seat)
+POST {{TrainBooking.Api_HostAddress}}/api/tickets
+Content-Type: application/json
+
+{
+  "trainId": 1,
+  "passengerName": "Vikram Shah",
+  "seatNumber": 5
+}
+
+### 9. List tickets for train 1 -> confirm one Cancelled + two Booked
+GET {{TrainBooking.Api_HostAddress}}/api/tickets?trainId=1
+Accept: application/json
+
+### 9b. List tickets with no trainId -> expect 400 (Phase F3 validation)
+GET {{TrainBooking.Api_HostAddress}}/api/tickets
+Accept: application/json
+
+### 9c. List tickets with trainId=0 -> expect 400 (Phase F3 validation)
+GET {{TrainBooking.Api_HostAddress}}/api/tickets?trainId=0
+Accept: application/json
+
+### 10. Update the train -> expect 200
+PUT {{TrainBooking.Api_HostAddress}}/api/trains/1
+Content-Type: application/json
+
+{
+  "trainNumber": "12951",
+  "trainName": "Mumbai Rajdhani Express",
+  "source": "Mumbai Central",
+  "destination": "New Delhi",
+  "capacity": 80
+}
+
+### 11. Delete the train while bookings are still active -> expect 409 (delete guard)
+DELETE {{TrainBooking.Api_HostAddress}}/api/trains/1
+
+### 12. Cancel the remaining active tickets (2 and 3), then delete succeeds -> expect 204
+POST {{TrainBooking.Api_HostAddress}}/api/tickets/2/cancel
+
 ###
+POST {{TrainBooking.Api_HostAddress}}/api/tickets/3/cancel
+
+###
+DELETE {{TrainBooking.Api_HostAddress}}/api/trains/1

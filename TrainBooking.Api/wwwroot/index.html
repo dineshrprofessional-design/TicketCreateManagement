@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Train Ticket Booking</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --border: #e1e4e8;
+    --text: #1f2328;
+    --muted: #6b7280;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --danger: #dc2626;
+    --danger-hover: #b91c1c;
+    --warn-bg: #fef2f2;
+    --warn-text: #991b1b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  h2 { font-size: 1.1rem; margin: 0 0 12px; }
+  .subtitle { color: var(--muted); margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 20px; max-width: 1100px; margin: 0 auto; }
+  @media (min-width: 900px) {
+    .grid { grid-template-columns: 1fr 1fr; align-items: start; }
+    .full-width { grid-column: 1 / -1; }
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  .field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 140px; }
+  label { font-size: 0.8rem; color: var(--muted); }
+  input {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+  }
+  button {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    background: var(--primary);
+    color: white;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  button:hover { background: var(--primary-hover); }
+  button.secondary { background: #e5e7eb; color: var(--text); }
+  button.secondary:hover { background: #d1d5db; }
+  button.danger { background: var(--danger); }
+  button.danger:hover { background: var(--danger-hover); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; }
+  tr.selected { background: #eff6ff; }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .actions button { padding: 5px 9px; font-size: 0.8rem; }
+  .status-badge { padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+  .status-booked { background: #dcfce7; color: #166534; }
+  .status-cancelled { background: #f3f4f6; color: #6b7280; }
+  .message { padding: 10px 12px; border-radius: 6px; margin-bottom: 14px; font-size: 0.85rem; display: none; }
+  .message.error { background: var(--warn-bg); color: var(--warn-text); display: block; }
+  .message.ok { background: #ecfdf5; color: #065f46; display: block; }
+  .empty { color: var(--muted); font-size: 0.85rem; padding: 10px 0; }
+  .ticket-train-label { color: var(--muted); font-size: 0.85rem; margin-bottom: 10px; }
+  .lookup-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .lookup-row input { max-width: 110px; }
+  .lookup-result { font-size: 0.85rem; min-height: 20px; margin-bottom: 10px; color: var(--muted); }
+  .lookup-result.ok { color: #065f46; }
+  .lookup-result.error { color: var(--warn-text); }
+</style>
+</head>
+<body>
+  <h1>Train Ticket Booking</h1>
+  <p class="subtitle">Manage trains and book/cancel seats, talking directly to the TrainBooking.Api backend.</p>
+
+  <div class="grid">
+    <div class="card full-width">
+      <h2 id="train-form-title">Add Train</h2>
+      <div id="train-message" class="message"></div>
+      <form id="train-form">
+        <div class="field">
+          <label>Train Number</label>
+          <input id="train-number" required maxlength="20" placeholder="12951" />
+        </div>
+        <div class="field">
+          <label>Train Name</label>
+          <input id="train-name" required maxlength="100" placeholder="Mumbai Rajdhani" />
+        </div>
+        <div class="field">
+          <label>Source</label>
+          <input id="train-source" required maxlength="100" placeholder="Mumbai Central" />
+        </div>
+        <div class="field">
+          <label>Destination</label>
+          <input id="train-destination" required maxlength="100" placeholder="New Delhi" />
+        </div>
+        <div class="field" style="flex: 0 1 100px;">
+          <label>Capacity</label>
+          <input id="train-capacity" type="number" min="1" required placeholder="72" />
+        </div>
+        <button type="submit" id="train-submit">Create Train</button>
+        <button type="button" class="secondary" id="train-cancel-edit" style="display:none;">Cancel</button>
+      </form>
+    </div>
+
+    <div class="card full-width">
+      <h2>Trains</h2>
+      <div class="lookup-row">
+        <input id="train-lookup-id" type="number" min="1" placeholder="Train ID" />
+        <button type="button" class="secondary" id="train-lookup-btn">Look up by ID (GET /api/trains/{id})</button>
+      </div>
+      <div id="train-lookup-result" class="lookup-result"></div>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Number</th><th>Name</th><th>Source</th><th>Destination</th><th>Capacity</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="trains-body"></tbody>
+      </table>
+      <div id="trains-empty" class="empty" style="display:none;">No trains yet — create one above.</div>
+    </div>
+
+    <div class="card">
+      <h2>Book a Ticket</h2>
+      <div id="ticket-train-label" class="ticket-train-label">Select a train above (click "Book") to book a seat.</div>
+      <div id="ticket-message" class="message"></div>
+      <form id="ticket-form">
+        <div class="field">
+          <label>Passenger Name</label>
+          <input id="ticket-passenger" required maxlength="100" placeholder="Asha Rao" />
+        </div>
+        <div class="field" style="flex: 0 1 120px;">
+          <label>Seat Number (optional)</label>
+          <input id="ticket-seat" type="number" min="1" placeholder="auto" />
+        </div>
+        <button type="submit" id="ticket-submit" disabled>Book Seat</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Tickets</h2>
+      <div class="lookup-row">
+        <input id="ticket-lookup-id" type="number" min="1" placeholder="Ticket ID" />
+        <button type="button" class="secondary" id="ticket-lookup-btn">Look up by ID (GET /api/tickets/{id})</button>
+      </div>
+      <div id="ticket-lookup-result" class="lookup-result"></div>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Passenger</th><th>Seat</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody id="tickets-body"></tbody>
+      </table>
+      <div id="tickets-empty" class="empty">Select a train to see its tickets.</div>
+    </div>
+  </div>
+
+<script>
+  const TICKET_STATUS_BOOKED = 0; // must match TrainBooking.Api.Enums.TicketStatus.Booked
+
+  const api = async (url, options) => {
+    const res = await fetch(url, options);
+    let body = null;
+    try { body = await res.json(); } catch {}
+    if (!res.ok) {
+      const message = body?.detail
+        || (body?.errors ? Object.values(body.errors).flat().join(' ') : `Request failed (${res.status})`);
+      throw new Error(message);
+    }
+    return body;
+  };
+
+  const show = (el, text, ok) => { el.textContent = text; el.className = 'message ' + (ok ? 'ok' : 'error'); };
+  const hide = (el) => { el.className = 'message'; el.textContent = ''; };
+
+  // ---- Trains ----
+  let editingTrainId = null;
+  let selectedTrain = null;
+
+  const trainForm = document.getElementById('train-form');
+  const trainMsg = document.getElementById('train-message');
+  const trainSubmit = document.getElementById('train-submit');
+  const trainCancelEdit = document.getElementById('train-cancel-edit');
+  const trainFormTitle = document.getElementById('train-form-title');
+
+  function trainPayload() {
+    return {
+      trainNumber: document.getElementById('train-number').value.trim(),
+      trainName: document.getElementById('train-name').value.trim(),
+      source: document.getElementById('train-source').value.trim(),
+      destination: document.getElementById('train-destination').value.trim(),
+      capacity: Number(document.getElementById('train-capacity').value),
+    };
+  }
+
+  function resetTrainForm() {
+    trainForm.reset();
+    editingTrainId = null;
+    trainFormTitle.textContent = 'Add Train';
+    trainSubmit.textContent = 'Create Train';
+    trainCancelEdit.style.display = 'none';
+  }
+
+  function fillTrainForm(train) {
+    editingTrainId = train.id;
+    document.getElementById('train-number').value = train.trainNumber;
+    document.getElementById('train-name').value = train.trainName;
+    document.getElementById('train-source').value = train.source;
+    document.getElementById('train-destination').value = train.destination;
+    document.getElementById('train-capacity').value = train.capacity;
+    trainFormTitle.textContent = `Edit Train #${train.id}`;
+    trainSubmit.textContent = 'Update Train';
+    trainCancelEdit.style.display = 'inline-block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  trainForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hide(trainMsg);
+    try {
+      if (editingTrainId) {
+        await api(`/api/trains/${editingTrainId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(trainPayload()),
+        });
+        show(trainMsg, `Train #${editingTrainId} updated.`, true);
+      } else {
+        const created = await api('/api/trains', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(trainPayload()),
+        });
+        show(trainMsg, `Train #${created.id} created.`, true);
+      }
+      resetTrainForm();
+      await loadTrains();
+    } catch (err) {
+      show(trainMsg, err.message, false);
+    }
+  });
+
+  trainCancelEdit.addEventListener('click', () => { resetTrainForm(); hide(trainMsg); });
+
+  async function deleteTrain(id) {
+    if (!confirm(`Delete train #${id}? This cannot be undone.`)) return;
+    hide(trainMsg);
+    try {
+      await api(`/api/trains/${id}`, { method: 'DELETE' });
+      show(trainMsg, `Train #${id} deleted.`, true);
+      if (selectedTrain?.id === id) {
+        selectedTrain = null;
+        renderTicketPanelHeader();
+        renderTickets([]);
+      }
+      await loadTrains();
+    } catch (err) {
+      show(trainMsg, err.message, false);
+    }
+  }
+
+  function renderTrains(trains) {
+    const body = document.getElementById('trains-body');
+    const empty = document.getElementById('trains-empty');
+    body.innerHTML = '';
+    empty.style.display = trains.length ? 'none' : 'block';
+    for (const t of trains) {
+      const tr = document.createElement('tr');
+      if (selectedTrain?.id === t.id) tr.classList.add('selected');
+      tr.innerHTML = `
+        <td>${t.id}</td>
+        <td>${t.trainNumber}</td>
+        <td>${t.trainName}</td>
+        <td>${t.source}</td>
+        <td>${t.destination}</td>
+        <td>${t.capacity}</td>
+        <td class="actions">
+          <button data-action="book" data-id="${t.id}">Book</button>
+          <button class="secondary" data-action="edit" data-id="${t.id}">Edit</button>
+          <button class="danger" data-action="delete" data-id="${t.id}">Delete</button>
+        </td>`;
+      body.appendChild(tr);
+    }
+    body.querySelectorAll('button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = Number(btn.dataset.id);
+        const train = trains.find((x) => x.id === id);
+        if (btn.dataset.action === 'edit') fillTrainForm(train);
+        else if (btn.dataset.action === 'delete') deleteTrain(id);
+        else if (btn.dataset.action === 'book') selectTrain(train);
+      });
+    });
+  }
+
+  async function loadTrains() {
+    try {
+      const trains = await api('/api/trains');
+      renderTrains(trains);
+    } catch (err) {
+      show(trainMsg, err.message, false);
+    }
+  }
+
+  document.getElementById('train-lookup-btn').addEventListener('click', async () => {
+    const id = document.getElementById('train-lookup-id').value;
+    const resultEl = document.getElementById('train-lookup-result');
+    if (!id) { resultEl.textContent = ''; resultEl.className = 'lookup-result'; return; }
+    try {
+      const train = await api(`/api/trains/${id}`);
+      resultEl.textContent = `#${train.id} ${train.trainNumber} "${train.trainName}" — ${train.source} → ${train.destination}, capacity ${train.capacity}`;
+      resultEl.className = 'lookup-result ok';
+    } catch (err) {
+      resultEl.textContent = err.message;
+      resultEl.className = 'lookup-result error';
+    }
+  });
+
+  // ---- Tickets ----
+  const ticketForm = document.getElementById('ticket-form');
+  const ticketMsg = document.getElementById('ticket-message');
+  const ticketSubmit = document.getElementById('ticket-submit');
+  const ticketTrainLabel = document.getElementById('ticket-train-label');
+
+  function renderTicketPanelHeader() {
+    if (selectedTrain) {
+      ticketTrainLabel.textContent = `Booking for train #${selectedTrain.id} — ${selectedTrain.trainNumber} (${selectedTrain.trainName}), capacity ${selectedTrain.capacity}`;
+      ticketSubmit.disabled = false;
+    } else {
+      ticketTrainLabel.textContent = 'Select a train above (click "Book") to book a seat.';
+      ticketSubmit.disabled = true;
+    }
+  }
+
+  function selectTrain(train) {
+    selectedTrain = train;
+    renderTicketPanelHeader();
+    hide(ticketMsg);
+    loadTickets();
+    loadTrains();
+  }
+
+  async function loadTickets() {
+    const body = document.getElementById('tickets-body');
+    const empty = document.getElementById('tickets-empty');
+    if (!selectedTrain) {
+      body.innerHTML = '';
+      empty.style.display = 'block';
+      empty.textContent = 'Select a train to see its tickets.';
+      return;
+    }
+    try {
+      const tickets = await api(`/api/tickets?trainId=${selectedTrain.id}`);
+      renderTickets(tickets);
+    } catch (err) {
+      show(ticketMsg, err.message, false);
+    }
+  }
+
+  function renderTickets(tickets) {
+    const body = document.getElementById('tickets-body');
+    const empty = document.getElementById('tickets-empty');
+    body.innerHTML = '';
+    empty.style.display = tickets.length ? 'none' : 'block';
+    empty.textContent = 'No tickets booked on this train yet.';
+    for (const t of tickets) {
+      const isBooked = t.status === TICKET_STATUS_BOOKED;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${t.id}</td>
+        <td>${t.passengerName}</td>
+        <td>${t.seatNumber}</td>
+        <td><span class="status-badge ${isBooked ? 'status-booked' : 'status-cancelled'}">${isBooked ? 'Booked' : 'Cancelled'}</span></td>
+        <td>${isBooked ? `<button class="danger" data-id="${t.id}">Cancel</button>` : ''}</td>`;
+      body.appendChild(tr);
+    }
+    body.querySelectorAll('button').forEach((btn) => {
+      btn.addEventListener('click', () => cancelTicket(Number(btn.dataset.id)));
+    });
+  }
+
+  async function cancelTicket(id) {
+    hide(ticketMsg);
+    try {
+      await api(`/api/tickets/${id}/cancel`, { method: 'POST' });
+      show(ticketMsg, `Ticket #${id} cancelled — seat is free again.`, true);
+      await loadTickets();
+    } catch (err) {
+      show(ticketMsg, err.message, false);
+    }
+  }
+
+  document.getElementById('ticket-lookup-btn').addEventListener('click', async () => {
+    const id = document.getElementById('ticket-lookup-id').value;
+    const resultEl = document.getElementById('ticket-lookup-result');
+    if (!id) { resultEl.textContent = ''; resultEl.className = 'lookup-result'; return; }
+    try {
+      const t = await api(`/api/tickets/${id}`);
+      const isBooked = t.status === TICKET_STATUS_BOOKED;
+      const cancelled = t.cancelledAtUtc ? `, cancelled ${new Date(t.cancelledAtUtc).toLocaleString()}` : '';
+      resultEl.textContent = `#${t.id} seat ${t.seatNumber} on train ${t.trainNumber} — ${t.passengerName} — ${isBooked ? 'Booked' : 'Cancelled'} (booked ${new Date(t.bookedAtUtc).toLocaleString()}${cancelled})`;
+      resultEl.className = 'lookup-result ok';
+    } catch (err) {
+      resultEl.textContent = err.message;
+      resultEl.className = 'lookup-result error';
+    }
+  });
+
+  ticketForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!selectedTrain) return;
+    hide(ticketMsg);
+    const seatValue = document.getElementById('ticket-seat').value;
+    const payload = {
+      trainId: selectedTrain.id,
+      passengerName: document.getElementById('ticket-passenger').value.trim(),
+      seatNumber: seatValue ? Number(seatValue) : null,
+    };
+    try {
+      const ticket = await api('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      show(ticketMsg, `Booked seat ${ticket.seatNumber} for ${ticket.passengerName} (ticket #${ticket.id}).`, true);
+      ticketForm.reset();
+      await loadTickets();
+    } catch (err) {
+      show(ticketMsg, err.message, false);
+    }
+  });
+
+  loadTrains();
+</script>
+</body>
+</html>
