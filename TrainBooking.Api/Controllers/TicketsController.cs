@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using TrainBooking.Api.DTOs;
 using TrainBooking.Api.Services;
+using TrainBooking.Api.Services.Exceptions;
 
 namespace TrainBooking.Api.Controllers;
 
@@ -16,6 +17,10 @@ public class TicketsController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(TicketResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<TicketResponse>> Book(BookTicketRequest request, CancellationToken ct)
     {
         var ticket = await _ticketService.BookAsync(request, ct);
@@ -23,14 +28,27 @@ public class TicketsController : ControllerBase
     }
 
     [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(TicketResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TicketResponse>> GetById(int id, CancellationToken ct)
         => Ok(await _ticketService.GetByIdAsync(id, ct));
 
     [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<TicketResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IReadOnlyList<TicketResponse>>> GetByTrain([FromQuery] int trainId, CancellationToken ct)
-        => Ok(await _ticketService.GetByTrainAsync(trainId, ct));
+    {
+        if (trainId <= 0)
+            throw new BadRequestException("trainId query parameter is required and must be a positive integer");
+
+        return Ok(await _ticketService.GetByTrainAsync(trainId, ct));
+    }
 
     [HttpPost("{id:int}/cancel")]
+    [ProducesResponseType(typeof(TicketResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<TicketResponse>> Cancel(int id, CancellationToken ct)
         => Ok(await _ticketService.CancelAsync(id, ct));
 }

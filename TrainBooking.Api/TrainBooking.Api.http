@@ -70,6 +70,14 @@ Content-Type: application/json
 GET {{TrainBooking.Api_HostAddress}}/api/tickets?trainId=1
 Accept: application/json
 
+### 9b. List tickets with no trainId -> expect 400 (Phase F3 validation)
+GET {{TrainBooking.Api_HostAddress}}/api/tickets
+Accept: application/json
+
+### 9c. List tickets with trainId=0 -> expect 400 (Phase F3 validation)
+GET {{TrainBooking.Api_HostAddress}}/api/tickets?trainId=0
+Accept: application/json
+
 ### 10. Update the train -> expect 200
 PUT {{TrainBooking.Api_HostAddress}}/api/trains/1
 Content-Type: application/json
