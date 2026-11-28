@@ -101,9 +101,9 @@ public class TrainService : ITrainService
         var train = await _db.Trains.FindAsync(new object?[] { id }, ct)
             ?? throw new NotFoundException($"Train {id} not found");
 
-        var hasActiveBookings = await _db.Tickets.AnyAsync(t => t.TrainId == id && t.Status == TicketStatus.Booked, ct);
-        if (hasActiveBookings)
-            throw new ConflictException($"Cannot delete train {id}: it has active ticket bookings");
+        var hasTicketHistory = await _db.Tickets.AnyAsync(t => t.TrainId == id, ct);
+        if (hasTicketHistory)
+            throw new ConflictException($"Cannot delete train {id}: it has existing ticket history");
 
         _db.Trains.Remove(train);
         await _db.SaveChangesAsync(ct);

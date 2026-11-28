@@ -31,7 +31,7 @@ public class AppDbContext : DbContext
             entity.HasOne(t => t.Train)
                   .WithMany(tr => tr.Tickets)
                   .HasForeignKey(t => t.TrainId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                  .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(t => new { t.TrainId, t.SeatNumber })
                   .IsUnique()
