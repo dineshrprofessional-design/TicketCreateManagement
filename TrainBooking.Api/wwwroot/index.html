@@ -170,6 +170,8 @@
   </div>
 
 <script>
+  const TICKET_STATUS_BOOKED = 0; // must match TrainBooking.Api.Enums.TicketStatus.Booked
+
   const api = async (url, options) => {
     const res = await fetch(url, options);
     let body = null;
@@ -375,7 +377,7 @@
     empty.style.display = tickets.length ? 'none' : 'block';
     empty.textContent = 'No tickets booked on this train yet.';
     for (const t of tickets) {
-      const isBooked = t.status === 0;
+      const isBooked = t.status === TICKET_STATUS_BOOKED;
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${t.id}</td>
@@ -407,7 +409,7 @@
     if (!id) { resultEl.textContent = ''; resultEl.className = 'lookup-result'; return; }
     try {
       const t = await api(`/api/tickets/${id}`);
-      const isBooked = t.status === 0;
+      const isBooked = t.status === TICKET_STATUS_BOOKED;
       const cancelled = t.cancelledAtUtc ? `, cancelled ${new Date(t.cancelledAtUtc).toLocaleString()}` : '';
       resultEl.textContent = `#${t.id} seat ${t.seatNumber} on train ${t.trainNumber} — ${t.passengerName} — ${isBooked ? 'Booked' : 'Cancelled'} (booked ${new Date(t.bookedAtUtc).toLocaleString()}${cancelled})`;
       resultEl.className = 'lookup-result ok';
